@@ -11,12 +11,12 @@ import scipy.special as special
 import random
 
 
-class AdaDa:
+class AdaGlowFit:
     """
-    Adaptive Differential Evolution Algorithm
+    Adaptive Differential Evolution Algorithm fitting a glow curve
     """
 
-    def __init__(self, data_df, metric, beta):
+    def __init__(self, data_df, metric, beta, g_max=100, N_pop=20, n_peaks=1):
         """
         Initialization
 
@@ -24,29 +24,63 @@ class AdaDa:
 
         self.data = data_df  # Takes data with two columns, [Intensity, temperature]
         self.data.columns = ['Intensity', 'Temperature']
+        self.data.reset_index(drop=True)
         self.beta = beta  # heating rate
+        self.n_peaks = n_peaks
 
         self.mod_data = None
 
         # Parameter borders
-        self.params_min = {'b': 0.1,
-                           'n0': 100,
-                           'E': 0.1,
-                           'Sdd': 10 ** (17)}
-
-        self.params_max  = {'b': 5,
+        self.params_min = {'b': 1.01,
                            'n0': 10000,
-                           'E': 100,
-                           'Sdd': 10 ** (21)}
-        self.params = []
+                           'E': 0.1,
+                           'Sdd': 10 ** (18),
 
-        self.params = ['b', 'n0', 'E', 'Sdd']
+                           'b2': 1.01,
+                           'n02': 10000,
+                           'E2': 0.1,
+                           'Sdd2': 10 ** (18),
+
+                           'b3': 1.01,
+                           'n03': 10000,
+                           'E3': 0.1,
+                           'Sdd3': 10 ** (18)
+                           }
+
+        self.params_max = {'b': 6.0,
+                           'n0': 20000000,
+                           'E': 2.0,
+                           'Sdd': 10 ** (21),
+
+                           'b2': 6.0,
+                           'n02': 20000000,
+                           'E2': 2.0,
+                           'Sdd2': 10 ** (21),
+
+                           'b3': 6.0,
+                           'n03': 20000000,
+                           'E3': 2.0,
+                           'Sdd3': 10 ** (21)
+                           }
+
+        self.mod_params = []
+
+        if n_peaks == 1:
+            self.params = ['b', 'n0', 'E', 'Sdd']
+        elif n_peaks == 2:
+            self.params = ['b', 'n0', 'E', 'Sdd',
+                           'b2', 'n02', 'E2', 'Sdd2']
+        elif n_peaks == 3:
+            self.params = ['b', 'n0', 'E', 'Sdd',
+                           'b2', 'n02', 'E2', 'Sdd2',
+                           'b3', 'n03', 'E3', 'Sdd3']
 
         #  Algorithm parameters
-        self.N_pop = 20  # Number of candidate solutions in each generations, usually 10-50, more=more diversity pr. g
-        self.g_max = 4000  # Maximum number of iteration cycles
-
-
+        self.N_pop = N_pop  # Number of candidate solutions in each generations, usually 10-50, more=more diversity pr. g
+        self.g_max = g_max  # Maximum number of iteration cycles
+        print(f'max generations: {self.g_max}')
+        print(f'population: {self.N_pop}')
+        self.fitnesses = []
 
         # Fitting parameters
         self.metrics = ['rmsle', 'rmse']
@@ -68,6 +102,21 @@ class AdaDa:
         self.best_params = None
         self.best_fit = None
 
+        self.multi_params = []
+        self.peak_fits = []
+
+    def multipeak_fit(self):
+        """
+        Triies to fit several peaks by fitting each and subtrscting it from the original data.
+        :return:
+        """
+
+        for i in range(self.n_peaks):
+            self.algorythm()
+            self.multi_params.append(self.best_params)
+            self.peak_fits.append(self.mod_data.copy(deep=True))
+            self.data.Intensity = self.data.Intensity.values - self.mod_data.Intensity.values
+
     def algorythm(self):
         """
         Adaptive Evolutionary Algorithm implemented as described in
@@ -83,7 +132,8 @@ class AdaDa:
             x = self.random_params_x()
             pop.append(x)
             fitness.append(self.fitness(x))
-
+        print('x')
+        print(x)
         # Creating initial values and constants
         a = np.log(2)  # Compression constant for adaptive crossover and mutation
         b = 1 / 2  # Compression constant for adaptive crossover and mutation
@@ -91,14 +141,21 @@ class AdaDa:
 
         fitness_best_last1 = min(fitness)
         fitness_best_last2 = fitness_best_last1
-        x_best_ind = fitness.index(np.min(fitness))
+
+        x_best_ind = fitness.index(fitness_best_last1)
         x_best = pop[x_best_ind]
+
+        # print('x_best')
+        # print(x_best)
 
         # Iteration
         g = 1  # start generation
         convergence = False
 
+        print(self.g_max)
+
         while g <= self.g_max and not convergence:
+            self.fitnesses.append(fitness_best_last1)
             A = fitness_best_last1 / fitness_best_last2
             for i in range(self.N_pop):
 
@@ -120,6 +177,7 @@ class AdaDa:
                             self.params])
                 # Checking Boundary conditions
                 for param in self.params:
+
                     if v_i[param] >= self.params_max[param]:
                         v_i[param] = self.random_params_x()[param]
 
@@ -150,13 +208,13 @@ class AdaDa:
             fitness_best_last2 = fitness_best_last1
             fitness_best_last1 = min(self.fitness(param) for param in pop)
 
-            x_best_ind = fitness.index(np.min(fitness))
+            x_best_ind = fitness.index(min(fitness))
             x_best = pop[x_best_ind]
 
             g = g + 1
 
             # Prints current values every 200 generation
-            if g % 200 == 0:
+            if g % 10 == 0:
                 print(f'\ngeneration: {g}, '
                       f'best params: {self.print_formatting(x_best)}, '
                       f'fitness: {format(fitness_best_last1, ".4e")}')
@@ -171,36 +229,36 @@ class AdaDa:
                     convergence = True
                 fitness_last_200 = fitness_best_last1
 
-
         print(f'\n Algorithm  finished '
               f'\n generation: {g}'
               f'\n best params: {self.print_formatting(x_best)}'
               f'\n fitness: {format(fitness_best_last1, ".4e")}')
 
-        self.mod_data = self.make_fit(x_best)
+        self.mod_data = self.make_fit(x_best, self.data)
         self.best_params = x_best
         self.best_fit = fitness_best_last1
 
     @staticmethod
     def print_formatting(params):
-         """
+        """
          Formats params for printing
         :param params: parameters
         :return: rounded parameters
          """
-         print_params = params.copy()
-         for param in print_params:
+        print_params = params.copy()
+        for param in print_params:
             if param == 'Is2' or param == 'Is1':
                 print_params[param] = format(print_params[param], '.4e')
             elif param == 'Rsh':
                 print_params[param] = round(print_params[param])
             else:
                 print_params[param] = round(print_params[param], 4)
-         return print_params
+        return print_params
 
     def fitness(self, params):
 
         errors = self.error(params)
+        # print(params)
 
         error_sqrd_sum = np.sum([(error ** 2) for error in errors], axis=0)
         N = len(errors)
@@ -216,7 +274,7 @@ class AdaDa:
             new_x[param] = mini + (maxi - mini) * random.uniform(0, 1)
         return new_x
 
-    def error(self, params, data):
+    def error(self, params):
         """
         Calculates the error of each set of parameters for the given dataset.
         :param params:
@@ -224,8 +282,7 @@ class AdaDa:
         :return:
         """
 
-        t = self.data['Temperature measured']
-        model_data = self.make_fit(params, data)
+        model_data = self.make_fit(params, self.data)
         errors = None
 
         if self.metric == 'rmsle':
@@ -235,7 +292,7 @@ class AdaDa:
                 print(e)
                 print('log(zero) or log(negative) warning')
         elif self.metric == 'rmse':
-            errors = self.data.Intensity - model_data.Intensity
+            errors = self.data['Intensity'].values - model_data['Intensity'].values
         else:
             print(f'invalid metric name "{self.metric}" given, default set to rmse')
             errors = self.data.Intensity - model_data.Intensity
@@ -249,11 +306,11 @@ class AdaDa:
         :param params: dictionary of optimal params
         """
 
-        temperatures = data['Temperatures measured']
+        temperatures = data['Temperature'].values
 
         intensity = [self.solve_general_equation(params=params, t=t) for t in temperatures]
 
-        data_mod_df = pd.DataFrame(columns=['Temperature', 'Counts'], dtype=np.longfloat)
+        data_mod_df = pd.DataFrame(columns=['Temperature', 'Intensity'], dtype=np.longfloat)
         data_mod_df['Temperature'] = temperatures
         data_mod_df['Intensity'] = intensity
 
@@ -266,6 +323,7 @@ class AdaDa:
 
         :return: Intensitu
         """
+        # print(params)
         Sdd = params['Sdd']
         b = params['b']
         E = params['E']
@@ -273,12 +331,44 @@ class AdaDa:
         beta = self.beta
         kb = self.kb
 
-        k1 = (kb * t * t) / E
+        def solve_single(Sdd, b, E, n0, t, beta, kb):
+            p1 = n0 * Sdd * np.exp((-E) / (kb * t))
 
-        a = n0 * Sdd * np.exp(-E / (kb * t)) * k1
+            p21 = 1
+            p221 = ((b - 1) * (Sdd / beta)) * ((kb * t * t) / E) * np.exp(-E / (kb * t))
+            p222 = (1 - 2 * ((kb * t) / E) + 6 * ((kb * t) / E) ** 2) - 24 * (((kb * t) / E) ** 3)
+            p22 = p221 * p222
 
-        b = 1 + ((b - 1) * (Sdd / beta)) * k1 * np.exp(-E / (kb * t)) \
-            * ((1 - 2 * (k1 / t)) + 6 * (k1 / t) ** 2 - 24 * (k1 / t) ** 3)
+            p2 = (p21 + p22)
 
-        intensity = a * b ** (-b / (b - 1))
-        return intensity
+            if b - 1 == 0:
+                p2b = p2 ** (-b / (1 * 10 ** (-20)))
+            else:
+                p2b = p2 ** (-b / (b - 1))
+
+            intensity = p1 * p2b
+
+            return intensity
+
+        intensity1 = solve_single(Sdd, b, E, n0, t, beta, kb)
+
+        if self.n_peaks == 1:
+            return intensity1
+
+        Sdd2 = params['Sdd2']
+        b2 = params['b2']
+        E2 = params['E2']
+        n02 = params['n02']
+        intensity2 = intensity1 + solve_single(Sdd2, b2, E2, n02, t, beta, kb)
+
+        if self.n_peaks == 2:
+            return intensity2
+
+        Sdd3 = params['Sdd3']
+        b3 = params['b3']
+        E3 = params['E3']
+        n03 = params['n03']
+        intensity3 = intensity1 + intensity2 + solve_single(Sdd3, b3, E2, n03, t, beta, kb)
+
+        if self.n_peaks == 3:
+            return intensity3
