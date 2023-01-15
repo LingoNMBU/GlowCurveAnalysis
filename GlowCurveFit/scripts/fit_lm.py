@@ -24,21 +24,29 @@ exp_data = exp_data.drop(axis=1, columns=['Time', 'Temperature setpoint'])
 exp_data.columns = ['Intensity', 'Temperature']
 exp_data.Temperature = exp_data.Temperature + 273.15
 
+x = exp_data['Temperature']
+y = exp_data['Intensity']
+
 #Fitting
 params0 = [1.0e+18, 4.0, 2, 10509767]
-ls = LsGlowFit(exp_data, params0, 1, 5)
-ls.fit_ls()
-#print(ls.result[3])
-#print(ls.result[0])
-plt.plot(exp_data.Temperature, exp_data.Intensity, label='experimental')
-plt.plot(exp_data.Temperature, ls.intensity_fit, label='model')
-#plt.plot(exp_data.Temperature, ls.peak_fits[0], label='model peak 1')
-#plt.plot(exp_data.Temperature, ls.peak_fits[1], label='model peak 2')
+ls = LsGlowFit(exp_data, params0, 3, 5)
+ls.fit_lm()
+
+result = ls.result
+
+plt.plot(x, y, 'o')
+#plt.plot(x, result.init_fit, '--', label='initial fit')
+plt.plot(x, result.best_fit, '-', label='best fit')
+plt.plot(exp_data.Temperature, ls.peak_fits[0], label='model peak 1')
+plt.plot(exp_data.Temperature, ls.peak_fits[1], label='model peak 2')
 #plt.plot(exp_data.Temperature, ls.peak_fits[2], label='model peak 3')
+#plt.plot(exp_data.Temperature, ls.peak_fits[3], label='model peak 4')
 plt.legend()
 plt.show()
 
-plt.plot(np.log(ls.residues))
-plt.show()
-
+print(result.best_values)
+print('r_squared')
+print(result.rsquared)
+print('redchi')
+print(result.redchi)
 

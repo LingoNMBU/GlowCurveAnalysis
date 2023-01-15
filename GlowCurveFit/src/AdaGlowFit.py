@@ -368,7 +368,7 @@ class AdaGlowFit:
         b3 = params['b3']
         E3 = params['E3']
         n03 = params['n03']
-        intensity3 = intensity1 + intensity2 + solve_single(Sdd3, b3, E2, n03, t, beta, kb)
+        intensity3 = intensity1 + intensity2 + solve_single(Sdd3, b3, E3, n03, t, beta, kb)
 
         if self.n_peaks == 3:
             return intensity3
