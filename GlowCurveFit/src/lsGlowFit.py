@@ -114,9 +114,9 @@ class LsGlowFit:
 
         for i in range(self.n_peaks):
             gcmodel.set_param_hint(f'Sdd_{i + 1}', value=1.0e+16, min=10**6, max=10.0**22)
-            gcmodel.set_param_hint(f'b_{i + 1}', value=2.0, min=0.5, max=5.0)
-            gcmodel.set_param_hint(f'E_{i + 1}', value=1.2, min=0.6, max=2.5)
-            gcmodel.set_param_hint(f'n0_{i + 1}', value=1.0e+5, min=10**4, max=10**12)
+            gcmodel.set_param_hint(f'b_{i + 1}', value=1.5, min=1.0, max=19.0)
+            gcmodel.set_param_hint(f'E_{i + 1}', value=1.2, min=0.6, max=2.0)
+            gcmodel.set_param_hint(f'n0_{i + 1}', value=1.0e+6, min=10**4, max=10**12)
             #gcmodel.set_param_hint(f'b_{i + 1}', value=1.0001, vary=False)
 
         gcmodel.set_param_hint(f'beta', value=beta, vary=False)
