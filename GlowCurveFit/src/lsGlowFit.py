@@ -14,6 +14,8 @@ class LsGlowFit:
 
     def __init__(self, data_df, params0, n_peaks, beta):
 
+        self.data_df = data_df
+
         self.x = data_df['Temperature'].values.astype(np.float64)
         self.y = data_df['Intensity'].values.astype(np.float64)
 
@@ -28,9 +30,88 @@ class LsGlowFit:
 
         self.kb = 8.617333e-5
 
+    def fit_km_fo(self):
+        """
+        Fitting glowcurve using Levenberg Marquard using lmfit package with the
+        equation for general order kinetics
+        :return:
+        """
+        xs = self.x
+        ys = self.y
+        beta = self.beta
+        kb = self.kb
+
+        def evaluate_1_glowpeak(Ts, kb, Tm, Im, E):
+            """
+
+            :param Ts: Temperatures
+            :param kb: Boltzmann constant
+            :param beta: heating rate
+            :param Tm: Temperature of peak
+            :param Im: Intensity of peak
+            :param E: Energy gap to trap
+            :return: Intensities
+            """
+
+            intensities = []
+            for T in Ts:
+                delta = (2 * kb * T) / E
+                delta_m = (2 * kb * Tm) / E
+
+                E_kbT = E / (kb * T)
+                TTm_Tm = (T - Tm) / Tm
+
+                e1 = 1 + E_kbT * TTm_Tm - ((T/Tm)**2) * np.exp(E_kbT*TTm_Tm) * (1 - delta) - delta_m
+
+                I_T = Im * np.exp(e1)
+
+                intensities.append(I_T)
+
+            return np.array(intensities)
+
+        def evaluate_2_glowpeaks(Ts, kb, Tm1, Im1, Tm2, Im2, E1, E2):
+
+            intensity1 = evaluate_1_glowpeak(Ts, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(Ts, kb, Tm2, Im2, E2)
+            intensity = intensity1 + intensity2
+
+            return intensity
+
+        def evaluate_3_glowpeaks(Ts, kb, Tm1, Im1, Tm2, Im2, Tm3, Im3, E1, E2, E3):
+            intensity1 = evaluate_1_glowpeak(Ts, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(Ts, kb, Tm2, Im2, E2)
+            intensity3 = evaluate_1_glowpeak(Ts, kb, Tm3, Im3, E3)
+            intensity = intensity1 + intensity2 + intensity3
+
+            return intensity
+
+
+        if self.n_peaks == 1:
+            gcmodel = lmfit.Model(evaluate_1_glowpeak)
+        elif self.n_peaks == 2:
+            gcmodel = lmfit.Model(evaluate_2_glowpeaks)
+        elif self.n_peaks == 3:
+            gcmodel = lmfit.Model(evaluate_3_glowpeaks)
+        else:
+            gcmodel = lmfit.Model(evaluate_1_glowpeak)
+
+        Im = [0,0,0]
+        Tm = [0,0,0]
+
+
+        for i in range(self.n_peaks):
+            gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.6, max=2.1)
+            gcmodel.set_param_hint(f'Tm{i+1}', value=Tm[i], vary=False)
+            gcmodel.set_param_hint(f'Im{i+1}', value=Im[i], vary=False)
+
+
+        gcmodel.set_param_hint(f'beta', value=beta, vary=False)
+        gcmodel.set_param_hint(f'kb', value=kb, vary=False)
+
     def fit_lm(self):
         """
-        Fitting glowcurve using Levenberg Marquard using lmfit package
+        Fitting glowcurve using Levenberg Marquard using lmfit package with the
+        equation for general order kinetics
         :return:
         """
         xs = self.x
@@ -113,16 +194,16 @@ class LsGlowFit:
             gcmodel = lmfit.Model(evaluate_1_glowpeak)
 
         for i in range(self.n_peaks):
-            gcmodel.set_param_hint(f'Sdd_{i + 1}', value=1.0e+16, min=10**6, max=10.0**22)
+            gcmodel.set_param_hint(f'Sdd_{i + 1}', value=1.0e+16, min=10 ** 6, max=10.0 ** 22)
             gcmodel.set_param_hint(f'b_{i + 1}', value=1.5, min=1.0, max=19.0)
             gcmodel.set_param_hint(f'E_{i + 1}', value=1.2, min=0.6, max=2.0)
-            gcmodel.set_param_hint(f'n0_{i + 1}', value=1.0e+6, min=10**4, max=10**12)
-            #gcmodel.set_param_hint(f'b_{i + 1}', value=1.0001, vary=False)
+            gcmodel.set_param_hint(f'n0_{i + 1}', value=1.0e+6, min=10 ** 4, max=10 ** 12)
+            # gcmodel.set_param_hint(f'b_{i + 1}', value=1.0001, vary=False)
 
         gcmodel.set_param_hint(f'beta', value=beta, vary=False)
         gcmodel.set_param_hint(f'kb', value=kb, vary=False)
 
-        #gcmodel.set_param_hint(f'n_peaks', value=self.n_peaks, vary=False)
+        # gcmodel.set_param_hint(f'n_peaks', value=self.n_peaks, vary=False)
 
         params = gcmodel.make_params()
 
@@ -133,10 +214,10 @@ class LsGlowFit:
         self.result = result
 
         for peak in range(self.n_peaks):
-            Sdd = result.best_values[f'Sdd_{peak+1}']
-            b = result.best_values[f'b_{peak+1}']
-            E = result.best_values[f'E_{peak+1}']
-            n0 = result.best_values[f'n0_{peak+1}']
+            Sdd = result.best_values[f'Sdd_{peak + 1}']
+            b = result.best_values[f'b_{peak + 1}']
+            E = result.best_values[f'E_{peak + 1}']
+            n0 = result.best_values[f'n0_{peak + 1}']
 
             self.peak_fits.append(evaluate_1_glowpeak(xs, beta, kb, Sdd, b, E, n0))
 
