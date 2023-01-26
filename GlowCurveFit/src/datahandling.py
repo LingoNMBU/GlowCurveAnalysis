@@ -12,6 +12,9 @@ import re
 
 
 class DataHandling:
+    """
+    Class handling, data imports, filtering, creation of datasets and so forth.
+    """
 
     def __init__(self, folder_path):
 
@@ -27,7 +30,27 @@ class DataHandling:
                            '1c': 15.45,
                            '1C': 15.45}
 
+    def import_data(self, directories):
+        """
+        Imports and formats data from a list of directories
+        :param directories: list of directories
+        :return:
+        """
+        data_dict = {}
+        for directory in directories:
+            for filename in os.listdir(directory):
+                path = os.path.join(directory, filename)
+                if os.path.isfile(path):
+                    data_dict[filename] = self.format_data(path)
+        return data_dict
+
     def format_data(self, path):
+        """
+        formats the data from the excel doc into a dataframe containing counts and temps,
+         and another dataframe containing the info about the sample
+        :param path: path of the sample file
+        :return:
+        """
         df = pd.read_excel(path)
 
         info_data = df.T.iloc[:28, 0]
@@ -41,16 +64,11 @@ class DataHandling:
         # replace nan with 0
         plot_data = plot_data.replace(np.nan, 0)
 
-        return [pd.DataFrame(plot_data), info_data]
+        #Remove cooldown from data
+        plot_data.index = plot_data['Temperature measured']
+        exp_data = plot_data.loc[:plot_data['Temperature measured'].idxmax(), :]
 
-    def import_data(self, directories):
-        data_dict = {}
-        for directory in directories:
-            for filename in os.listdir(directory):
-                path = os.path.join(directory, filename)
-                if os.path.isfile(path):
-                    data_dict[filename] = self.format_data(path)
-        return data_dict
+        return [pd.DataFrame(plot_data), info_data]
 
     def make_dataset(self):
         """
@@ -66,7 +84,12 @@ class DataHandling:
                         'peak time',
                         'peak intensity',
                         'sum intensity',
-                        'depth']
+                        'depth',
+                        'peak intensity 1diff',
+                        'minima intensity 1diff',
+                        'peak temperature 1diff',
+                        'minima temperature 1diff',
+                        'sum intensity 1diff']
         dataset = pd.DataFrame(columns=column_names)
 
         data_dict = self.data_dict
@@ -89,6 +112,14 @@ class DataHandling:
             intensitysum = data['Counts measured'].sum()
             depth = self.depth_dict[position]
 
+            # Derivative features
+            data_diff1 = np.diff(data['Counts measured'], n=1)
+            peak_intensity_1diff = np.max(data_diff1)
+            peak_temp_1diff = np.argmax(data_diff1)
+            minima_intensity_1diff = np.min(data_diff1)
+            minima_temp_1diff = np.min(data_diff1)
+            sum_abs_intensity_diff1 = np.sum(abs(data_diff1))
+
             sample_features = np.array([substance,
                                         nr,
                                         position,
@@ -96,7 +127,13 @@ class DataHandling:
                                         peak_time,
                                         peak_intensity,
                                         intensitysum,
-                                        depth]).reshape(1, -1)
+                                        depth,
+                                        peak_intensity_1diff,
+                                        minima_intensity_1diff,
+                                        peak_temp_1diff,
+                                        minima_temp_1diff,
+                                        sum_abs_intensity_diff1
+                                        ]).reshape(1, -1)
 
             sample_df = pd.DataFrame(sample_features, columns=column_names)
 
@@ -105,6 +142,14 @@ class DataHandling:
             self.dataset = dataset
 
     def filter_data(self, data_dict, substances=['CaSO4'], P='P1', dose='all'):
+        """
+        Filters data for different parameters
+        :param data_dict: dictionary of datasamples created by format data
+        :param substances: what substances to filter for
+        :param P: what position to filter for
+        :param dose: what dose to filter for
+        :return: plot data, data ready for plotting, filterd
+        """
         plot_data = {}
         for filename in data_dict.keys():
             for substance in substances:

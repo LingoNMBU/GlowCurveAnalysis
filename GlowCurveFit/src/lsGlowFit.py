@@ -11,6 +11,9 @@ import lmfit
 
 
 class LsGlowFit:
+    """
+    Classs fittting glowcurves using nonlinear least squares
+    """
 
     def __init__(self, data_df, params0, n_peaks, beta):
 
@@ -30,7 +33,7 @@ class LsGlowFit:
 
         self.kb = 8.617333e-5
 
-    def fit_km_fo(self):
+    def fit_lm_1o(self):
         """
         Fitting glowcurve using Levenberg Marquard using lmfit package with the
         equation for general order kinetics
@@ -41,46 +44,51 @@ class LsGlowFit:
         beta = self.beta
         kb = self.kb
 
-        def evaluate_1_glowpeak(Ts, kb, Tm, Im, E):
+        def evaluate_1_glowpeak(x, kb, Tm1, Im1, E1):
             """
 
             :param Ts: Temperatures
             :param kb: Boltzmann constant
             :param beta: heating rate
-            :param Tm: Temperature of peak
-            :param Im: Intensity of peak
-            :param E: Energy gap to trap
+            :param Tm1: Temperature of peak
+            :param Im1: Intensity of peak
+            :param E1: Energy gap to trap
             :return: Intensities
             """
 
             intensities = []
-            for T in Ts:
-                delta = (2 * kb * T) / E
-                delta_m = (2 * kb * Tm) / E
+            for T in x:
+                delta = (2 * kb * T) / E1
+                delta_m = (2 * kb * Tm1) / E1
 
-                E_kbT = E / (kb * T)
-                TTm_Tm = (T - Tm) / Tm
+                E_kbT = E1 / (kb * T)
+                TTm_Tm = (T - Tm1) / Tm1
 
-                e1 = 1 + E_kbT * TTm_Tm - ((T/Tm)**2) * np.exp(E_kbT*TTm_Tm) * (1 - delta) - delta_m
+                e1 = 1 + E_kbT * TTm_Tm - ((T / Tm1) ** 2) * np.exp(E_kbT * TTm_Tm) * (1 - delta) - delta_m
 
-                I_T = Im * np.exp(e1)
+                I_T = Im1 * np.exp(e1)
 
                 intensities.append(I_T)
 
             return np.array(intensities)
 
-        def evaluate_2_glowpeaks(Ts, kb, Tm1, Im1, Tm2, Im2, E1, E2):
+        def evaluate_2_glowpeaks(x, kb,
+                                 Tm1, Im1, E1,
+                                 Tm2, Im2, E2):
 
-            intensity1 = evaluate_1_glowpeak(Ts, kb, Tm1, Im1, E1)
-            intensity2 = evaluate_1_glowpeak(Ts, kb, Tm2, Im2, E2)
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
             intensity = intensity1 + intensity2
 
             return intensity
 
-        def evaluate_3_glowpeaks(Ts, kb, Tm1, Im1, Tm2, Im2, Tm3, Im3, E1, E2, E3):
-            intensity1 = evaluate_1_glowpeak(Ts, kb, Tm1, Im1, E1)
-            intensity2 = evaluate_1_glowpeak(Ts, kb, Tm2, Im2, E2)
-            intensity3 = evaluate_1_glowpeak(Ts, kb, Tm3, Im3, E3)
+        def evaluate_3_glowpeaks(x, kb,
+                                 Tm1, Im1, E1,
+                                 Tm2, Im2, E2,
+                                 Tm3, Im3, E3):
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
+            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3)
             intensity = intensity1 + intensity2 + intensity3
 
             return intensity
@@ -98,15 +106,32 @@ class LsGlowFit:
         Im = [0,0,0]
         Tm = [0,0,0]
 
-
         for i in range(self.n_peaks):
-            gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.6, max=2.1)
-            gcmodel.set_param_hint(f'Tm{i+1}', value=Tm[i], vary=False)
-            gcmodel.set_param_hint(f'Im{i+1}', value=Im[i], vary=False)
+
+            Im[i] = ys.max()
+            Tm[i] = xs[ys.argmax()]
+
+
+            gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.2, max=3)
+            gcmodel.set_param_hint(f'Tm{i+1}', value=500, min=0.0, max=1500)
+            gcmodel.set_param_hint(f'Im{i+1}', value=10e+4, min=0.0, max=10e+8)
 
 
         gcmodel.set_param_hint(f'beta', value=beta, vary=False)
         gcmodel.set_param_hint(f'kb', value=kb, vary=False)
+
+        params = gcmodel.make_params()
+
+        result = gcmodel.fit(ys, params, x=xs)
+
+        self.result = result
+
+        for peak in range(self.n_peaks):
+            Tm = result.best_values[f'Tm{peak + 1}']
+            Im = result.best_values[f'Im{peak + 1}']
+            E = result.best_values[f'E{peak + 1}']
+
+            self.peak_fits.append(evaluate_1_glowpeak(xs, kb, Tm, Im, E))
 
     def fit_lm(self):
         """

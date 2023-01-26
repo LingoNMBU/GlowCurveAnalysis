@@ -25,24 +25,25 @@ LTB_1b = pd.read_csv(
 LTB_1c = pd.read_csv(
     r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\LTB_agg_1c.csv')
 
-exp_data = CASO4_P1
+exp_data = LTB_P1
 
+#Preprocessing
 exp_data.index = exp_data['Temperature measured']
 exp_data = exp_data.loc[:exp_data['Temperature measured'].idxmax(), :]
+
 exp_data = exp_data.drop(axis=1, columns=['Time', 'Temperature setpoint'])
 exp_data.columns = ['Intensity', 'Temperature']
 exp_data.Temperature = exp_data.Temperature + 273.15
 
-#exp_data.Intensity = exp_data.Intensity / exp_data.Intensity.max()
 
 x = exp_data['Temperature']
 y = exp_data['Intensity']
 
 #Fitting
 params0 = [1.0e+18, 4.0, 2, 10509767]
-ls = LsGlowFit(exp_data, params0, 3, 5)
+ls = LsGlowFit(exp_data, params0, 2, 5)
 print('fitting  with Levenberg-Marquardt')
-ls.fit_lm()
+ls.fit_lm_1o()
 
 result = ls.result
 
