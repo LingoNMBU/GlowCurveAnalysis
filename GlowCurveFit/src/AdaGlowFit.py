@@ -372,3 +372,4 @@ class AdaGlowFit:
 
         if self.n_peaks == 3:
             return intensity3
+

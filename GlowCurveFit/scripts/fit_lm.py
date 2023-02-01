@@ -41,7 +41,7 @@ y = exp_data['Intensity']
 
 #Fitting
 params0 = [1.0e+18, 4.0, 2, 10509767]
-ls = LsGlowFit(exp_data, params0, 2, 5)
+ls = LsGlowFit(data_df=exp_data, params0=params0, n_peaks=2, beta=5)
 print('fitting  with Levenberg-Marquardt')
 ls.fit_lm_1o()
 
@@ -52,7 +52,7 @@ plt.plot(x, y, 'o')
 plt.plot(x, result.best_fit, '-', label='best fit')
 plt.plot(exp_data.Temperature, ls.peak_fits[0], label='model peak 1')
 plt.plot(exp_data.Temperature, ls.peak_fits[1], label='model peak 2')
-plt.plot(exp_data.Temperature, ls.peak_fits[2], label='model peak 3')
+#plt.plot(exp_data.Temperature, ls.peak_fits[2], label='model peak 3')
 #plt.plot(exp_data.Temperature, ls.peak_fits[3], label='model peak 4')
 plt.legend()
 plt.show()

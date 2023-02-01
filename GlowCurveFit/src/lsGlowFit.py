@@ -6,6 +6,7 @@ __email__ = 'erlinge@nmbu.no'
 
 import numpy as np
 from scipy.optimize import leastsq
+import pandas as pd
 from scipy.optimize import fmin_slsqp
 import lmfit
 
@@ -15,7 +16,7 @@ class LsGlowFit:
     Classs fittting glowcurves using nonlinear least squares
     """
 
-    def __init__(self, data_df, params0, n_peaks, beta):
+    def __init__(self, data_df, n_peaks, beta, params0=None):
 
         self.data_df = data_df
 
@@ -64,7 +65,7 @@ class LsGlowFit:
                 E_kbT = E1 / (kb * T)
                 TTm_Tm = (T - Tm1) / Tm1
 
-                e1 = 1 + E_kbT * TTm_Tm - ((T / Tm1) ** 2) * np.exp(E_kbT * TTm_Tm) * (1 - delta) - delta_m
+                e1 = 1 + (E_kbT * TTm_Tm) - (((T / Tm1) ** 2) * np.exp(E_kbT * TTm_Tm) * (1 - delta)) - delta_m
 
                 I_T = Im1 * np.exp(e1)
 
@@ -103,19 +104,103 @@ class LsGlowFit:
         else:
             gcmodel = lmfit.Model(evaluate_1_glowpeak)
 
-        Im = [0,0,0]
-        Tm = [0,0,0]
+        for i in range(self.n_peaks):
+
+            gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.2, max=3)
+            gcmodel.set_param_hint(f'Tm{i+1}', value=500, min=300.0, max=900)
+            gcmodel.set_param_hint(f'Im{i+1}', value=10e+5, min=5*10e+3, max=10e+6)
+
+
+        gcmodel.set_param_hint(f'beta', value=beta, vary=False)
+        gcmodel.set_param_hint(f'kb', value=kb, vary=False)
+
+        params = gcmodel.make_params()
+
+        result = gcmodel.fit(ys, params, x=xs)
+
+        self.result = result
+
+        for peak in range(self.n_peaks):
+            Tm = result.best_values[f'Tm{peak + 1}']
+            Im = result.best_values[f'Im{peak + 1}']
+            E = result.best_values[f'E{peak + 1}']
+
+            self.peak_fits.append(evaluate_1_glowpeak(xs, kb, Tm, Im, E))
+
+    def fit_lm_2o(self):
+        """
+        Fitting glowcurve using Levenberg Marquard using lmfit package with the
+        equation for general order kinetics
+        :return:
+        """
+        xs = self.x
+        ys = self.y
+        beta = self.beta
+        kb = self.kb
+
+        def evaluate_1_glowpeak(x, kb, Tm1, Im1, E1):
+            """
+
+            :param Ts: Temperatures
+            :param kb: Boltzmann constant
+            :param beta: heating rate
+            :param Tm1: Temperature of peak
+            :param Im1: Intensity of peak
+            :param E1: Energy gap to trap
+            :return: Intensities
+            """
+
+            intensities = []
+            for T in x:
+                E_kbT = E1 / (kb * T)
+                TTm_Tm = (T-Tm1)/Tm1
+                delta = (2*kb*T)/E1
+                delta_m = (2*kb*Tm1)/E1
+
+                a = 4.0 *Im1*np.exp(E_kbT*TTm_Tm)
+                b = (((T/Tm1)**2) * (1-delta) * np.exp(E_kbT*TTm_Tm) + 1 + delta_m)**(-2)
+                I_T = a * b
+
+                intensities.append(I_T)
+
+            return np.array(intensities)
+
+        def evaluate_2_glowpeaks(x, kb,
+                                 Tm1, Im1, E1,
+                                 Tm2, Im2, E2):
+
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
+            intensity = intensity1 + intensity2
+
+            return intensity
+
+        def evaluate_3_glowpeaks(x, kb,
+                                 Tm1, Im1, E1,
+                                 Tm2, Im2, E2,
+                                 Tm3, Im3, E3):
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
+            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3)
+            intensity = intensity1 + intensity2 + intensity3
+
+            return intensity
+
+
+        if self.n_peaks == 1:
+            gcmodel = lmfit.Model(evaluate_1_glowpeak)
+        elif self.n_peaks == 2:
+            gcmodel = lmfit.Model(evaluate_2_glowpeaks)
+        elif self.n_peaks == 3:
+            gcmodel = lmfit.Model(evaluate_3_glowpeaks)
+        else:
+            gcmodel = lmfit.Model(evaluate_1_glowpeak)
 
         for i in range(self.n_peaks):
 
-            Im[i] = ys.max()
-            Tm[i] = xs[ys.argmax()]
-
-
             gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.2, max=3)
-            gcmodel.set_param_hint(f'Tm{i+1}', value=500, min=0.0, max=1500)
-            gcmodel.set_param_hint(f'Im{i+1}', value=10e+4, min=0.0, max=10e+8)
-
+            gcmodel.set_param_hint(f'Tm{i+1}', value=500, min=300.0, max=900)
+            gcmodel.set_param_hint(f'Im{i+1}', value=10e+5, min=5*10e+3, max=10e+6)
 
         gcmodel.set_param_hint(f'beta', value=beta, vary=False)
         gcmodel.set_param_hint(f'kb', value=kb, vary=False)
@@ -396,3 +481,68 @@ class LsGlowFit:
         for t in self.x:
             intensities.append(solve_single(Sdd, b, E, n0, t, beta, kb))
         return intensities
+
+    def make_sim_glowcurve(self, params, order):
+        """
+        makes dataframe of simulated glowcurve
+        :param params:
+        :return:
+        """
+
+        temperatures = self.x
+
+        if order == 'first':
+            intensity = self.make_first_order_glowpeak(params)
+
+        data_mod_df = pd.DataFrame(columns=['Temperature', 'Intensity'], dtype=np.longfloat)
+        data_mod_df['Temperature'] = temperatures
+        data_mod_df['Intensity'] = intensity
+
+        data_mod_df.index = data_mod_df.Temperature
+
+
+        return data_mod_df
+
+    def make_first_order_glowpeak(self, params):
+        """
+
+        :param params: params
+        :return: intensities
+        """
+        xs = self.x
+        kb = self.kb
+        Tm1 = params['Tm1']
+        Im1 = params['Im1']
+        E1 = params['E1']
+
+        def evaluate_1_glowpeak(x, kb, Tm1, Im1, E1):
+            """
+
+            :param Ts: Temperatures
+            :param kb: Boltzmann constant
+            :param beta: heating rate
+            :param Tm1: Temperature of peak
+            :param Im1: Intensity of peak
+            :param E1: Energy gap to trap
+            :return: Intensities
+            """
+
+            intensities = []
+            for T in x:
+                delta = (2 * kb * T) / E1
+                delta_m = (2 * kb * Tm1) / E1
+
+                E_kbT = E1 / (kb * T)
+                TTm_Tm = (T - Tm1) / Tm1
+
+                e1 = 1 + E_kbT * TTm_Tm - ((T / Tm1) ** 2) * np.exp(E_kbT * TTm_Tm) * (1 - delta) - delta_m
+
+                I_T = Im1 * np.exp(e1)
+
+                intensities.append(I_T)
+
+            return np.array(intensities)
+
+        intensities1 = evaluate_1_glowpeak(xs, kb, Tm1, Im1, E1)
+
+        return intensities1
