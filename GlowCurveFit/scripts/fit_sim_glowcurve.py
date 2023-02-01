@@ -13,11 +13,11 @@ from matplotlib.gridspec import GridSpec
 from AdaGlowFit import AdaGlowFit
 from lsGlowFit import LsGlowFit
 
-# exp_data = pd.read_csv(
-#     r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\LTB_P1_processed.csv')
-
 exp_data = pd.read_csv(
-    r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\CaSO4_P1_processed.csv')
+    r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\LTB_P1_processed.csv')
+
+# exp_data = pd.read_csv(
+#     r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\CaSO4_P1_processed.csv')
 
 exp_data.index = exp_data['Temperature measured']
 exp_data = exp_data.loc[:exp_data['Temperature measured'].idxmax(), :]

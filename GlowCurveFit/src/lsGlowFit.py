@@ -229,25 +229,22 @@ class LsGlowFit:
         beta = self.beta
         kb = self.kb
 
-        def evaluate_1_glowpeak(x, beta, kb, Sdd_1, b_1, E_1, n0_1):
+        def evaluate_1_glowpeak(x, kb, Tm1, Im1, E1, b1):
 
             intensities = []
-            for t in x:
-                p1 = n0_1 * Sdd_1 * np.exp((-E_1) / (kb * t))
+            for T in x:
 
-                p21 = 1
-                p221 = ((b_1 - 1) * (Sdd_1 / beta)) * ((kb * t * t) / E_1) * np.exp(-E_1 / (kb * t))
-                p222 = (1 - 2 * ((kb * t) / E_1) + 6 * ((kb * t) / E_1) ** 2) - 24 * (
-                        ((kb * t) / E_1) ** 3)
-                p22 = p221 * p222
+                delta = (2 * kb * T) * E1
+                delta_m = (2 * kb * Tm1) * E1
+                Zm = 1 + (b1 - 1) * delta_m
+                E_kbT = E1 / (kb * T)
+                TTm_Tm = (T - Tm1) / Tm1
 
-                p2 = (p21 + p22)
+                p1 = Im1 * b1 ** (b1 / (b1 - 1)) * np.exp(E_kbT * TTm_Tm)
 
-                b_exp = (-b_1 / (b_1 - 1))
+                p2 = ((b1 - 1) * (1 - delta) * ((T / Tm1) ** 2) * np.exp(E_kbT * TTm_Tm) + Zm) ** (-b1 / (b1 - 1))
 
-                p2b = np.power(p2, b_exp, dtype=np.complex)
-
-                intensity = p1 * p2b
+                intensity = p1 * p2
                 intensities.append(intensity)
 
                 if not np.isfinite(intensity):
@@ -258,38 +255,25 @@ class LsGlowFit:
 
             return np.array(intensities)
 
-        def evaluate_2_glowpeaks(x, beta, kb,
-                                 Sdd_1, b_1, E_1, n0_1,
-                                 Sdd_2, b_2, E_2, n0_2):
+        def evaluate_2_glowpeaks(x, kb,
+                                 Tm1, Im1, E1, b1,
+                                 Tm2, Im2, E2, b2):
 
-            intensity1 = evaluate_1_glowpeak(x, beta, kb, Sdd_1, b_1, E_1, n0_1)
-            intensity2 = evaluate_1_glowpeak(x, beta, kb, Sdd_2, b_2, E_2, n0_2)
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1, b1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2, b2)
             intensity = intensity1 + intensity2
 
             return intensity
 
-        def evaluate_3_glowpeaks(x, beta, kb,
-                                 Sdd_1, b_1, E_1, n0_1,
-                                 Sdd_2, b_2, E_2, n0_2,
-                                 Sdd_3, b_3, E_3, n0_3):
-
-            intensity1 = evaluate_1_glowpeak(x, beta, kb, Sdd_1, b_1, E_1, n0_1)
-            intensity2 = evaluate_1_glowpeak(x, beta, kb, Sdd_2, b_2, E_2, n0_2)
-            intensity3 = evaluate_1_glowpeak(x, beta, kb, Sdd_3, b_3, E_3, n0_3)
+        def evaluate_3_glowpeaks(x, kb,
+                                 Tm1, Im1, E1, b1,
+                                 Tm2, Im2, E2, b2,
+                                 Tm3, Im3, E3, b3):
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1, b1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2, b2)
+            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3, b3)
             intensity = intensity1 + intensity2 + intensity3
-            return intensity
 
-        def evaluate_4_glowpeaks(x, beta, kb,
-                                 Sdd_1, b_1, E_1, n0_1,
-                                 Sdd_2, b_2, E_2, n0_2,
-                                 Sdd_3, b_3, E_3, n0_3,
-                                 Sdd_4, b_4, E_4, n0_4):
-
-            intensity1 = evaluate_1_glowpeak(x, beta, kb, Sdd_1, b_1, E_1, n0_1)
-            intensity2 = evaluate_1_glowpeak(x, beta, kb, Sdd_2, b_2, E_2, n0_2)
-            intensity3 = evaluate_1_glowpeak(x, beta, kb, Sdd_3, b_3, E_3, n0_3)
-            intensity4 = evaluate_1_glowpeak(x, beta, kb, Sdd_4, b_4, E_4, n0_4)
-            intensity = intensity1 + intensity2 + intensity3 + intensity4
             return intensity
 
         if self.n_peaks == 1:
@@ -298,20 +282,19 @@ class LsGlowFit:
             gcmodel = lmfit.Model(evaluate_2_glowpeaks)
         elif self.n_peaks == 3:
             gcmodel = lmfit.Model(evaluate_3_glowpeaks)
-        elif self.n_peaks == 4:
-            gcmodel = lmfit.Model(evaluate_4_glowpeaks)
         else:
             gcmodel = lmfit.Model(evaluate_1_glowpeak)
 
         for i in range(self.n_peaks):
-            gcmodel.set_param_hint(f'Sdd_{i + 1}', value=1.0e+16, min=10 ** 6, max=10.0 ** 22)
-            gcmodel.set_param_hint(f'b_{i + 1}', value=1.5, min=1.0, max=19.0)
-            gcmodel.set_param_hint(f'E_{i + 1}', value=1.2, min=0.6, max=2.0)
-            gcmodel.set_param_hint(f'n0_{i + 1}', value=1.0e+6, min=10 ** 4, max=10 ** 12)
-            # gcmodel.set_param_hint(f'b_{i + 1}', value=1.0001, vary=False)
+
+            gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.2, max=3)
+            gcmodel.set_param_hint(f'Tm{i+1}', value=500, min=300.0, max=900)
+            gcmodel.set_param_hint(f'Im{i+1}', value=10e+5, min=5*10e+3, max=10e+6)
+            gcmodel.set_param_hint(f'b{i + 1}', value=3, min=1.01, max=100)
 
         gcmodel.set_param_hint(f'beta', value=beta, vary=False)
         gcmodel.set_param_hint(f'kb', value=kb, vary=False)
+
 
         # gcmodel.set_param_hint(f'n_peaks', value=self.n_peaks, vary=False)
 
@@ -324,12 +307,13 @@ class LsGlowFit:
         self.result = result
 
         for peak in range(self.n_peaks):
-            Sdd = result.best_values[f'Sdd_{peak + 1}']
-            b = result.best_values[f'b_{peak + 1}']
-            E = result.best_values[f'E_{peak + 1}']
-            n0 = result.best_values[f'n0_{peak + 1}']
+            Tm = result.best_values[f'Tm{peak + 1}']
+            Im = result.best_values[f'Im{peak + 1}']
+            E = result.best_values[f'E{peak + 1}']
+            b = result.best_values[f'b{peak + 1}']
 
-            self.peak_fits.append(evaluate_1_glowpeak(xs, beta, kb, Sdd, b, E, n0))
+
+            self.peak_fits.append(evaluate_1_glowpeak(xs, kb, Tm, Im, E, b))
 
     def fit_ls(self):
         """
