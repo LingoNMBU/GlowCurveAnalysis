@@ -94,6 +94,33 @@ class LsGlowFit:
 
             return intensity
 
+        def evaluate_4_glowpeaks(x, kb,
+                                 Tm1, Im1, E1,
+                                 Tm2, Im2, E2,
+                                 Tm3, Im3, E3,
+                                 Tm4, Im4, E4):
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
+            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3)
+            intensity4 = evaluate_1_glowpeak(x, kb, Tm4, Im4, E4)
+            intensity = intensity1 + intensity2 + intensity3 + intensity4
+
+            return intensity
+
+        def evaluate_5_glowpeaks(x, kb,
+                                 Tm1, Im1, E1,
+                                 Tm2, Im2, E2,
+                                 Tm3, Im3, E3,
+                                 Tm4, Im4, E4,
+                                 Tm5, Im5, E5):
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
+            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3)
+            intensity4 = evaluate_1_glowpeak(x, kb, Tm4, Im4, E4)
+            intensity5 = evaluate_1_glowpeak(x, kb, Tm5, Im5, E5)
+            intensity = intensity1 + intensity2 + intensity3 + intensity4 + intensity5
+
+            return intensity
 
         if self.n_peaks == 1:
             gcmodel = lmfit.Model(evaluate_1_glowpeak)
@@ -101,14 +128,18 @@ class LsGlowFit:
             gcmodel = lmfit.Model(evaluate_2_glowpeaks)
         elif self.n_peaks == 3:
             gcmodel = lmfit.Model(evaluate_3_glowpeaks)
+        elif self.n_peaks == 4:
+            gcmodel = lmfit.Model(evaluate_4_glowpeaks)
+        elif self.n_peaks == 5:
+            gcmodel = lmfit.Model(evaluate_5_glowpeaks)
         else:
             gcmodel = lmfit.Model(evaluate_1_glowpeak)
 
         for i in range(self.n_peaks):
 
-            gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.2, max=3)
+            gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.2, max=3.5)
             gcmodel.set_param_hint(f'Tm{i+1}', value=500, min=300.0, max=900)
-            gcmodel.set_param_hint(f'Im{i+1}', value=10e+5, min=5*10e+3, max=10e+6)
+            gcmodel.set_param_hint(f'Im{i+1}', value=10e+4, min=5*10e+3, max=10e+6)
 
 
         gcmodel.set_param_hint(f'beta', value=beta, vary=False)
@@ -186,6 +217,33 @@ class LsGlowFit:
 
             return intensity
 
+        def evaluate_4_glowpeaks(x, kb,
+                                 Tm1, Im1, E1,
+                                 Tm2, Im2, E2,
+                                 Tm3, Im3, E3,
+                                 Tm4, Im4, E4):
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
+            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3)
+            intensity4 = evaluate_1_glowpeak(x, kb, Tm4, Im4, E4)
+            intensity = intensity1 + intensity2 + intensity3 + intensity4
+
+            return intensity
+
+        def evaluate_5_glowpeaks(x, kb,
+                                 Tm1, Im1, E1,
+                                 Tm2, Im2, E2,
+                                 Tm3, Im3, E3,
+                                 Tm4, Im4, E4,
+                                 Tm5, Im5, E5):
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
+            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3)
+            intensity4 = evaluate_1_glowpeak(x, kb, Tm4, Im4, E4)
+            intensity5 = evaluate_1_glowpeak(x, kb, Tm5, Im5, E5)
+            intensity = intensity1 + intensity2 + intensity3 + intensity4 + intensity5
+
+            return intensity
 
         if self.n_peaks == 1:
             gcmodel = lmfit.Model(evaluate_1_glowpeak)
@@ -193,6 +251,10 @@ class LsGlowFit:
             gcmodel = lmfit.Model(evaluate_2_glowpeaks)
         elif self.n_peaks == 3:
             gcmodel = lmfit.Model(evaluate_3_glowpeaks)
+        elif self.n_peaks == 4:
+            gcmodel = lmfit.Model(evaluate_4_glowpeaks)
+        elif self.n_peaks == 5:
+            gcmodel = lmfit.Model(evaluate_5_glowpeaks)
         else:
             gcmodel = lmfit.Model(evaluate_1_glowpeak)
 
@@ -276,12 +338,44 @@ class LsGlowFit:
 
             return intensity
 
+        def evaluate_4_glowpeaks(x, kb,
+                                 Tm1, Im1, E1,
+                                 Tm2, Im2, E2,
+                                 Tm3, Im3, E3,
+                                 Tm4, Im4, E4):
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
+            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3)
+            intensity4 = evaluate_1_glowpeak(x, kb, Tm4, Im4, E4)
+            intensity = intensity1 + intensity2 + intensity3 + intensity4
+
+            return intensity
+
+        def evaluate_5_glowpeaks(x, kb,
+                                 Tm1, Im1, E1,
+                                 Tm2, Im2, E2,
+                                 Tm3, Im3, E3,
+                                 Tm4, Im4, E4,
+                                 Tm5, Im5, E5):
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
+            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3)
+            intensity4 = evaluate_1_glowpeak(x, kb, Tm4, Im4, E4)
+            intensity5 = evaluate_1_glowpeak(x, kb, Tm5, Im5, E5)
+            intensity = intensity1 + intensity2 + intensity3 + intensity4 + intensity5
+
+            return intensity
+
         if self.n_peaks == 1:
             gcmodel = lmfit.Model(evaluate_1_glowpeak)
         elif self.n_peaks == 2:
             gcmodel = lmfit.Model(evaluate_2_glowpeaks)
         elif self.n_peaks == 3:
             gcmodel = lmfit.Model(evaluate_3_glowpeaks)
+        elif self.n_peaks == 4:
+            gcmodel = lmfit.Model(evaluate_4_glowpeaks)
+        elif self.n_peaks == 5:
+            gcmodel = lmfit.Model(evaluate_5_glowpeaks)
         else:
             gcmodel = lmfit.Model(evaluate_1_glowpeak)
 

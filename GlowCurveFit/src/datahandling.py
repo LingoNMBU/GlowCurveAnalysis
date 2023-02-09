@@ -7,6 +7,7 @@ __email__ = 'erlinge@nmbu.no'
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from scipy import stats, signal
 import os
 import re
 
@@ -80,16 +81,19 @@ class DataHandling:
         column_names = ['substance',
                         'sample_nr',
                         'position',
-                        'peak temperature',
-                        'peak time',
-                        'peak intensity',
-                        'sum intensity',
+                        'peak_temperature',
+                        'peak_time',
+                        'peak_intensity',
+                        'peak_width_half',
+                        'sum_intensity',
                         'depth',
-                        'peak intensity 1diff',
-                        'minima intensity 1diff',
-                        'peak temperature 1diff',
-                        'minima temperature 1diff',
-                        'sum intensity 1diff']
+                        'peak_intensity_1diff',
+                        'minima_intensity_1diff',
+                        'peak_temperature_1diff',
+                        'minima_temperature_1diff',
+                        'sum_intensity_1diff',
+                        'skew',
+                        'kurtosis']
         dataset = pd.DataFrame(columns=column_names)
 
         data_dict = self.data_dict
@@ -102,6 +106,7 @@ class DataHandling:
             substance = name_split[0]
             position = name_split[1]
             nr = name_split[2].split('.')[0]
+            depth = self.depth_dict[position]
 
             # Peak features
             data.index = data['Temperature measured']
@@ -109,8 +114,16 @@ class DataHandling:
             data.index = data['Time']
             peak_time = data['Counts measured'].idxmax()
             peak_intensity = data['Counts measured'].max()
+            data.index = range(len(data.Time))
+            peak_ind = [data['Counts measured'].idxmax()]
+            peak_width_half = signal.peak_widths(data['Counts measured'].values, peaks=peak_ind,
+                                                 rel_height=0.5)[0][0]
+
+            # Stats features
             intensitysum = data['Counts measured'].sum()
-            depth = self.depth_dict[position]
+            skew = stats.skew(data['Counts measured'].values)
+            kurtosis = stats.kurtosis(data['Counts measured'].values)
+
 
             # Derivative features
             data_diff1 = np.diff(data['Counts measured'], n=1)
@@ -118,7 +131,7 @@ class DataHandling:
             peak_temp_1diff = np.argmax(data_diff1)
             minima_intensity_1diff = np.min(data_diff1)
             minima_temp_1diff = np.min(data_diff1)
-            sum_abs_intensity_diff1 = np.sum(abs(data_diff1))
+            sum_abs_intensity_diff1 = np.sum(data_diff1)
 
             sample_features = np.array([substance,
                                         nr,
@@ -126,13 +139,16 @@ class DataHandling:
                                         peak_temp,
                                         peak_time,
                                         peak_intensity,
+                                        peak_width_half,
                                         intensitysum,
                                         depth,
                                         peak_intensity_1diff,
                                         minima_intensity_1diff,
                                         peak_temp_1diff,
                                         minima_temp_1diff,
-                                        sum_abs_intensity_diff1
+                                        sum_abs_intensity_diff1,
+                                        skew,
+                                        kurtosis
                                         ]).reshape(1, -1)
 
             sample_df = pd.DataFrame(sample_features, columns=column_names)
