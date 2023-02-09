@@ -339,29 +339,29 @@ class LsGlowFit:
             return intensity
 
         def evaluate_4_glowpeaks(x, kb,
-                                 Tm1, Im1, E1,
-                                 Tm2, Im2, E2,
-                                 Tm3, Im3, E3,
-                                 Tm4, Im4, E4):
-            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
-            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
-            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3)
-            intensity4 = evaluate_1_glowpeak(x, kb, Tm4, Im4, E4)
+                                 Tm1, Im1, E1, b1,
+                                 Tm2, Im2, E2, b2,
+                                 Tm3, Im3, E3, b3,
+                                 Tm4, Im4, E4, b4):
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1, b1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2, b2)
+            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3, b3)
+            intensity4 = evaluate_1_glowpeak(x, kb, Tm4, Im4, E4, b4)
             intensity = intensity1 + intensity2 + intensity3 + intensity4
 
             return intensity
 
         def evaluate_5_glowpeaks(x, kb,
-                                 Tm1, Im1, E1,
-                                 Tm2, Im2, E2,
-                                 Tm3, Im3, E3,
-                                 Tm4, Im4, E4,
-                                 Tm5, Im5, E5):
-            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1)
-            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2)
-            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3)
-            intensity4 = evaluate_1_glowpeak(x, kb, Tm4, Im4, E4)
-            intensity5 = evaluate_1_glowpeak(x, kb, Tm5, Im5, E5)
+                                 Tm1, Im1, E1, b1,
+                                 Tm2, Im2, E2, b2,
+                                 Tm3, Im3, E3, b3,
+                                 Tm4, Im4, E4, b4,
+                                 Tm5, Im5, E5, b5):
+            intensity1 = evaluate_1_glowpeak(x, kb, Tm1, Im1, E1, b1)
+            intensity2 = evaluate_1_glowpeak(x, kb, Tm2, Im2, E2, b2)
+            intensity3 = evaluate_1_glowpeak(x, kb, Tm3, Im3, E3, b3)
+            intensity4 = evaluate_1_glowpeak(x, kb, Tm4, Im4, E4, b4)
+            intensity5 = evaluate_1_glowpeak(x, kb, Tm5, Im5, E5, b5)
             intensity = intensity1 + intensity2 + intensity3 + intensity4 + intensity5
 
             return intensity

@@ -21,8 +21,12 @@ path2 = r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\CaSO4
 paths = [path1, path2]
 
 
-
 def preprocess_data(path):
+    """
+    Preprocesses the datafile
+    :param path: path of glowcurve file
+    :return: preprocessed df of data
+    """
     exp_data = pd.read_csv(path)
 
     exp_data.index = exp_data['Temperature measured']
@@ -33,10 +37,10 @@ def preprocess_data(path):
 
     return exp_data
 
+
 path = path1
 name = path.split('\\')[-1].split('.')[0]
 exp_data = preprocess_data(path)
-
 
 # Generate sim curves
 n_peaks = 1
@@ -58,10 +62,9 @@ o1_sim_curve3['Intensity'] = o1_sim_curve1['Intensity'].values + \
                              o1_sim_curve2['Intensity'].values
 
 
-
-
-def fit_glow_curve(glowcurve, n_peaks, order):
+def fit_glow_curve(glowcurve, n_peaks, order, name):
     # Curve fitting
+
     lsGlow1 = LsGlowFit(data_df=glowcurve, n_peaks=n_peaks, beta=5)
     print(f'fitting lm for gc with {n_peaks} peaks of {order} order')
     if order == 'first':
@@ -73,16 +76,13 @@ def fit_glow_curve(glowcurve, n_peaks, order):
     else:
         lsGlow1.fit_lm_2o()
 
-
     result = lsGlow1.result
     mod_data_lm = result.best_fit
 
     print('lm params')
     print(result.best_values)
 
-
     print(result.fit_report())
-
 
     # Plot initialization
     fig = plt.figure()
@@ -103,7 +103,7 @@ def fit_glow_curve(glowcurve, n_peaks, order):
     # Peak plots
     for i in range(n_peaks):
         ax1.plot(exp_data.Temperature, lsGlow1.peak_fits[i],
-                 label=f'model peak {i+1}',
+                 label=f'model peak {i + 1}',
                  linestyle='dashed')
 
     # Res plot
@@ -114,7 +114,7 @@ def fit_glow_curve(glowcurve, n_peaks, order):
              color='black')
 
     # Garnityr
-    ax1.set_title(f'First order curve fit, peaks : {n_peaks}')
+    ax1.set_title(f'{order} order curve fit, peaks : {n_peaks}')
     ax1.set_xlabel('Temperature [K]')
     ax1.set_ylabel('Intensity [Counts]')
 
@@ -122,11 +122,12 @@ def fit_glow_curve(glowcurve, n_peaks, order):
     ax2.set_ylabel('Residue [Counts]')
 
     ax1.legend()
+    plt.savefig(f'{name}_o_{order}_{n_peaks}peaks_plot.pdf')
     plt.show()
 
     rmse = metrics.mean_squared_error(y_true=exp_data['Intensity'],
-                                       y_pred=mod_data_lm,
-                                       squared=False)
+                                      y_pred=mod_data_lm,
+                                      squared=False)
     print(rmse)
 
     # Storing fir ind info
@@ -135,7 +136,7 @@ def fit_glow_curve(glowcurve, n_peaks, order):
     fit_df['best_fit'] = result.best_fit
     fit_df['residue'] = result.residual
     for i in range(n_peaks):
-        fit_df[f'peak_fit_{i+1}'] = lsGlow1.peak_fits[i]
+        fit_df[f'peak_fit_{i + 1}'] = lsGlow1.peak_fits[i]
 
     info_df = pd.DataFrame(result.best_values, index=range(1))
     info_df['rmse'] = rmse
@@ -147,18 +148,14 @@ def fit_glow_curve(glowcurve, n_peaks, order):
     fit_df.to_pickle(f'{name}_o_{order}_{n_peaks}peaks_fit.pkl')
     info_df.to_pickle(f'{name}_o_{order}_{n_peaks}peaks_info.pkl')
 
+
 # Select curve
 for path in paths:
-    exp_data = pd.read_csv(path)
-
-    sample = path.split('\\')[-1].split('.')[0]
-
-    exp_data.index = exp_data['Temperature measured']
-    exp_data = exp_data.loc[:exp_data['Temperature measured'].idxmax(), :]
-    exp_data = exp_data.drop(axis=1, columns=['Time', 'Temperature setpoint'])
-    exp_data.columns = ['Intensity', 'Temperature']
-    exp_data.Temperature = exp_data.Temperature + 273.15
-
-    glowcurve = exp_data
-    n_peaks = 5
-    order = 'first'
+    name = path.split('\\')[-1].split('.')[0]
+    data_pp = preprocess_data(path)
+    for order in ['first', 'second', 'general']:
+        for n_peaks in range(1, 6):
+            fit_glow_curve(glowcurve=data_pp,
+                           order=order,
+                           n_peaks=n_peaks,
+                           name=name)
