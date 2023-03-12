@@ -3,6 +3,7 @@
 
 __author__ = 'Erling Ween Eriksen'
 __email__ = 'erlinge@nmbu.no'
+
 import os
 import pandas as pd
 import numpy as np
@@ -13,25 +14,27 @@ from sklearn import metrics
 
 from AdaGlowFit import AdaGlowFit
 from lsGlowFit import LsGlowFit
+from datahandling import DataHandling
 
 # Load experimental data
-path1 = r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\LTB_P1_processed.csv'
-path2 = r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\CaSO4_P1_processed.csv'
-path3 = r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\data_aarhus\LTB_1a+3a_1.xlsx'
-
 LTB_paths = []
+CaSO4_paths = []
 
 directory = r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\data_aarhus'
 for filename in os.listdir(directory):
     f = os.path.join(directory, filename)
-    # checking if it is a file
+    # checking substance
+    if filename.split('_')[0] == 'LTB':
+        LTB_paths.append(f)
+    else:
+        CaSO4_paths.append(f)
 
 
-paths = [path3]
+LTB = ['1a_3', '1a_6', '1b_2']
 
+CaSO4_paths2 = [r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\data_aarhus\CaSO4_1C_4.xlsx']
 
-
-
+LTB_paths2 = [r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\data_aarhus\LTB_1a+3a_3.xlsx']
 
 def preprocess_data(path):
     """
@@ -39,44 +42,30 @@ def preprocess_data(path):
     :param path: path of glowcurve file
     :return: preprocessed df of data
     """
-    exp_data = pd.read_csv(path)
+    df = pd.read_excel(path)
 
+    info_data = df.T.iloc[:28, 0]
+    plot_data = df.T.iloc[30:, :]
+    plot_data.columns = [df.T.iloc[28, 0],
+                         df.T.iloc[28, 1],
+                         df.T.iloc[28, 2]]
+    plot_data['Time'] = plot_data.index
+    plot_data.reset_index()
+
+    # replace nan with 0
+    exp_data = plot_data.replace(np.nan, 0)
+
+    # Remove cooldown from data
     exp_data.index = exp_data['Temperature measured']
     exp_data = exp_data.loc[:exp_data['Temperature measured'].idxmax(), :]
     exp_data = exp_data.drop(axis=1, columns=['Time', 'Temperature setpoint'])
     exp_data.columns = ['Intensity', 'Temperature']
+
+    #Change to Kelvin
     exp_data.Temperature = exp_data.Temperature + 273.15
 
     return exp_data
 
-
-path = path1
-name = path.split('\\')[-1].split('.')[0]
-exp_data = preprocess_data(path)
-
-# Generate sim curves
-n_peaks = 1
-adaGlow0 = AdaGlowFit(exp_data, beta=5, metric='rmse', g_max=100, N_pop=50, n_peaks=n_peaks)
-lsGlow1 = LsGlowFit(exp_data, n_peaks=n_peaks, beta=5)
-
-gen_params1 = {'E': 1.7, 'b': 3.0, 'n0': 800000, 'Sdd': 10 ** 19}
-gen_params2 = {'E': 1.5, 'b': 2.1, 'n0': 4000000, 'Sdd': 10 ** 19}
-gen_sim_curve1 = adaGlow0.make_fit(gen_params1, exp_data)
-gen_sim_curve2 = adaGlow0.make_fit(gen_params2, exp_data)
-gen_sim_curve2['Intensity'] = gen_sim_curve1['Intensity'] + gen_sim_curve2['Intensity']
-
-o1_params1 = {'kb': 8.617333e-05, 'Tm1': 550, 'Im1': 200000, 'E1': 0.6}
-o1_params2 = {'kb': 8.617333e-05, 'Tm1': 540, 'Im1': 450000, 'E1': 1.3}
-o1_sim_curve1 = lsGlow1.make_sim_glowcurve(o1_params1, order='first')
-o1_sim_curve2 = lsGlow1.make_sim_glowcurve(o1_params2, order='first')
-o1_sim_curve3 = lsGlow1.make_sim_glowcurve(o1_params2, order='first')
-o1_sim_curve3['Intensity'] = o1_sim_curve1['Intensity'].values + \
-                             o1_sim_curve2['Intensity'].values
-
-
-lsGlow1 = LsGlowFit(data_df=exp_data, n_peaks=3, beta=5)
-lsGlow1.fit_lm_2o()
-result = lsGlow1.result
 
 def fit_glow_curve(glowcurve, n_peaks, order, name):
     # Curve fitting
@@ -140,8 +129,9 @@ def fit_glow_curve(glowcurve, n_peaks, order, name):
     ax2.set_ylabel('Residue [Counts]')
 
     ax1.legend()
+    plt.tight_layout()
     plt.savefig(f'{name}_o_{order}_{n_peaks}peaks_plot.pdf')
-    #plt.show()
+    plt.show()
 
     rmse = metrics.mean_squared_error(y_true=glowcurve['Intensity'],
                                       y_pred=mod_data_lm,
@@ -166,14 +156,13 @@ def fit_glow_curve(glowcurve, n_peaks, order, name):
     fit_df.to_pickle(f'{name}_o_{order}_{n_peaks}peaks_fit.pkl')
     info_df.to_pickle(f'{name}_o_{order}_{n_peaks}peaks_info.pkl')
 
-
+paths = LTB_paths2
 # Select curve
 for path in paths:
     name = path.split('\\')[-1].split('.')[0]
     data_pp = preprocess_data(path)
-    for order in ['general']:
-        for n_peaks in range(1, 6):
-            fit_glow_curve(glowcurve=data_pp,
-                           order=order,
-                           n_peaks=n_peaks,
-                           name=name)
+    for order in ['second']:
+        fit_glow_curve(glowcurve=data_pp,
+                       order=order,
+                       n_peaks=3,
+                       name=name)

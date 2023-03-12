@@ -17,8 +17,6 @@ print('imported data')
 dh.make_dataset()
 
 dataset = dh.dataset
-dataset.to_csv('features.csv')
+dataset.to_csv('features3.csv')
 
-plt.hist(dataset)
-
-print('lol')
+print('made dataset')

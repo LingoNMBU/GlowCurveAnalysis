@@ -135,11 +135,21 @@ class LsGlowFit:
         else:
             gcmodel = lmfit.Model(evaluate_1_glowpeak)
 
-        for i in range(self.n_peaks):
 
-            gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.2, max=3.5)
-            gcmodel.set_param_hint(f'Tm{i+1}', value=500, min=300.0, max=900)
-            gcmodel.set_param_hint(f'Im{i+1}', value=10e+4, min=5*10e+3, max=10e+6)
+        if self.n_peaks == 1:
+
+            Im = np.max(ys)
+            Tm = xs[np.argmax(ys)]
+
+            gcmodel.set_param_hint(f'Tm{1}', value=Tm,  vary=False)
+            gcmodel.set_param_hint(f'Im{1}', value=Im, vary=False)
+            gcmodel.set_param_hint(f'E{1}', value=1.2, min=0.5, max=2.0)
+        else:
+            for i in range(self.n_peaks):
+
+                gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.2, max=3.5)
+                gcmodel.set_param_hint(f'Tm{i+1}', value=500, min=300.0, max=900)
+                gcmodel.set_param_hint(f'Im{i+1}', value=10e+4, min=5*10e+3, max=10e+6)
 
 
         gcmodel.set_param_hint(f'beta', value=beta, vary=False)
@@ -258,17 +268,43 @@ class LsGlowFit:
         else:
             gcmodel = lmfit.Model(evaluate_1_glowpeak)
 
-        for i in range(self.n_peaks):
+        #for i in range(self.n_peaks):
 
-            gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.2, max=3)
-            gcmodel.set_param_hint(f'Tm{i+1}', value=500, min=300.0, max=900)
-            gcmodel.set_param_hint(f'Im{i+1}', value=10e+5, min=5*10e+3, max=10e+6)
+        #    gcmodel.set_param_hint(f'E{i + 1}', value=1.1, min=0.8, max=2)
+        #    gcmodel.set_param_hint(f'Tm{i+1}', value=500, min=440.0, max=650)
+        #    gcmodel.set_param_hint(f'Im{i+1}', value=10e+5, min=10e+3, max=10e+6)
+
+        #LTB 3 peak param constraints
+
+        gcmodel.set_param_hint(f'E1', value=1.3, min=1.0, max=1.7)
+        gcmodel.set_param_hint(f'Tm1', value=470, min=440.0, max=525)
+        gcmodel.set_param_hint(f'Im1', value=5*10e+3, min=0.5*10e+3, max=10e+4)
+
+        gcmodel.set_param_hint(f'E2', value=1.5, min=1.0, max=1.85)
+        gcmodel.set_param_hint(f'Tm2', value=540, min=520.0, max=590)
+        gcmodel.set_param_hint(f'Im2', value=3*10e+4, min=2*10e+4, max=3.5*10e+4)
+
+        gcmodel.set_param_hint(f'E3', value=1.3, min=1.0, max=1.6)
+        gcmodel.set_param_hint(f'Tm3', value=615, min=580.0, max=640)
+        gcmodel.set_param_hint(f'Im3', value=2*10e+3, min=10e+2, max=5.0*10e+3)
+
+        # CaSO4  3 peak param constraints
+        #gcmodel.set_param_hint(f'E1', value=1.3, min=1.0, max=1.6)
+        #gcmodel.set_param_hint(f'Tm1', value=450, min=440.0, max=470)
+        #gcmodel.set_param_hint(f'Im1', value=3*10e+4, min=1*10e+4, max=3.5*10e+4)
+
+        #gcmodel.set_param_hint(f'E2', value=1.6, min=0.3, max=1.85)
+        #gcmodel.set_param_hint(f'Tm2', value=510, min=480.0, max=570)
+        #gcmodel.set_param_hint(f'Im2', value=3*10e+3, min=1*10e+3, max=5*10e+3)
+
+        #gcmodel.set_param_hint(f'E3', value=1.3, min=0.6, max=1.6)
+        #gcmodel.set_param_hint(f'Tm3', value=615, min=580.0, max=900)
+        #gcmodel.set_param_hint(f'Im3', value=2*10e+3, min=10e+2, max=20.0*10e+4)
 
         gcmodel.set_param_hint(f'beta', value=beta, vary=False)
         gcmodel.set_param_hint(f'kb', value=kb, vary=False)
 
         params = gcmodel.make_params()
-
         result = gcmodel.fit(ys, params, x=xs)
 
         self.result = result
@@ -383,7 +419,7 @@ class LsGlowFit:
 
             gcmodel.set_param_hint(f'E{i + 1}', value=1.2, min=0.2, max=3)
             gcmodel.set_param_hint(f'Tm{i+1}', value=500, min=300.0, max=900)
-            gcmodel.set_param_hint(f'Im{i+1}', value=10e+5, min=5*10e+3, max=10e+6)
+            gcmodel.set_param_hint(f'Im{i+1}', value=10e+5, min=10e+3, max=10e+6)
             gcmodel.set_param_hint(f'b{i + 1}', value=3, min=1.01, max=100)
 
         gcmodel.set_param_hint(f'beta', value=beta, vary=False)

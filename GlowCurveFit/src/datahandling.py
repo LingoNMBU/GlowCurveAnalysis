@@ -11,6 +11,8 @@ from scipy import stats, signal
 import os
 import re
 
+from lsGlowFit import LsGlowFit
+
 
 class DataHandling:
     """
@@ -67,9 +69,33 @@ class DataHandling:
 
         #Remove cooldown from data
         plot_data.index = plot_data['Temperature measured']
-        exp_data = plot_data.loc[:plot_data['Temperature measured'].idxmax(), :]
+        plot_data = plot_data.loc[:plot_data['Temperature measured'].idxmax(), :]
 
         return [pd.DataFrame(plot_data), info_data]
+
+    def format_data_txt(self, target_directory):
+        """
+        converts aarhus csv files into txt files of appropriate format for luminescence code
+        :param source_directory: source of csv files
+        :param target_directory: target of txt files
+        :return:
+        """
+
+        data_dict = self.data_dict
+
+        for filename in data_dict.keys():
+            name = filename.split('.')[0]
+            data = data_dict[filename][0].copy(deep=True)
+            data.index = data['Temperature measured']
+            data = data.loc[:data['Temperature measured'].idxmax(), :]
+
+            TL_data = pd.DataFrame(columns=['T(K)', 'I'])
+            TL_data['I'] = data['Counts measured']
+            TL_data['T(K)'] = data['Temperature measured'].values + 273.15
+            TL_data = TL_data.reset_index(drop=True)
+
+            TL_data.to_csv(fr'{target_directory}\{name}_TL_data.txt', sep='\t')
+
 
     def make_dataset(self):
         """
@@ -95,6 +121,7 @@ class DataHandling:
                         'skew',
                         'kurtosis']
         dataset = pd.DataFrame(columns=column_names)
+
 
         data_dict = self.data_dict
 
@@ -133,6 +160,26 @@ class DataHandling:
             minima_temp_1diff = np.min(data_diff1)
             sum_abs_intensity_diff1 = np.sum(data_diff1)
 
+            # Deconvolution features
+            glowcurve = data.drop(axis=1, columns=['Time', 'Temperature setpoint'])
+            glowcurve.columns = ['Intensity', 'Temperature']
+            glowcurve.Temperature = glowcurve.Temperature + 273.15
+            glowcurve = glowcurve.astype('float32')
+
+            if substance == 'CaSO4':
+                n_peaks = 1
+            elif substance == 'LTB':
+                n_peaks = 3
+            else:
+                n_peaks = 3
+
+            lsGlow1 = LsGlowFit(data_df=glowcurve, n_peaks=n_peaks, beta=5)
+            lsGlow1.fit_lm_2o()
+            result = lsGlow1.result
+            decon_features = pd.DataFrame(result.best_values, index=range(1))
+            decon_features = decon_features.drop('kb', axis=1)
+
+
             sample_features = np.array([substance,
                                         nr,
                                         position,
@@ -152,8 +199,11 @@ class DataHandling:
                                         ]).reshape(1, -1)
 
             sample_df = pd.DataFrame(sample_features, columns=column_names)
+            sample_df = pd.concat([sample_df, decon_features], axis=1, ignore_index=False)
+            dataset = pd.concat([dataset, sample_df], ignore_index=True, axis=0)
 
-            dataset = pd.concat([dataset, sample_df], ignore_index=True)
+            print(name_split)
+            print(np.shape(dataset))
 
             self.dataset = dataset
 

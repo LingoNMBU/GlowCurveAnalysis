@@ -8,39 +8,49 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
 
 from AdaGlowFit import AdaGlowFit
 
-exp_data = pd.read_csv(
-    r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\LTB_P1_processed.csv')
+directory = r'C:\Users\erlin\Desktop\Studie\2023\Master\GlowCurveAnalysis\data\curve_fits\fit_info'
 
-exp_data.index = exp_data['Temperature measured']
-exp_data = exp_data.loc[:exp_data['Temperature measured'].idxmax(), :]
-exp_data = exp_data.drop(axis=1, columns=['Time', 'Temperature setpoint'])
-plt.plot(exp_data['Counts measured'])
+paths = os.listdir(directory)
+
+heatmap_LTB = pd.DataFrame(columns=['first', 'second', 'general'],
+                           index=range(1, 6),
+                           dtype='float32')
+heatmap_CaSO4 = pd.DataFrame(columns=['first', 'second', 'general'],
+                             index=range(1, 6),
+                             dtype='float32')
+
+#heatmap_LTB.dtypes = ['float32', 'float32', 'float32']
+#heatmap_LTB.dtypes = ['float32', 'float32', 'float32']
+
+for filename in os.listdir(directory):
+     path = os.path.join(directory, filename)
+     file = pd.read_pickle(path)
+
+     if filename.split('_')[0] == 'CaSO4':
+          order = file['order'].values[0]
+          peaks = file['n_peaks'].values[0]
+
+          heatmap_CaSO4.loc[peaks,order] = file['rmse'].values[0]
+
+     if filename.split('_')[0] == 'LTB':
+          order = file['order'].values[0]
+          peaks = file['n_peaks'].values[0]
+
+          heatmap_LTB.loc[peaks,order] = file['rmse'].values[0]
+
+LTB_array = np.array(heatmap_LTB)
+
+plt.title('LTB RMSE')
+sns.heatmap(heatmap_LTB, cmap="crest", vmin=0, annot=True)
+
 plt.show()
-
-exp_data.columns = ['Intensity', 'Temperature']
-adaGlow1 = AdaGlowFit(exp_data, beta=5, metric='rmse')
-
-params1 = {'E': 2.05, 'b': 3, 'n0': 8000000, 'Sdd': 10 ** 19}
-params2 = {'E': 1.1*2.05, 'b': 3, 'n0': 8000000, 'Sdd': 10 ** 19}
-params3 = {'E': 2.05, 'b': 1.1*3.0, 'n0': 8000000, 'Sdd': 10 ** 19}
-params4 = {'E': 2.05, 'b': 3, 'n0': 1.1*8000000, 'Sdd': 10 ** 19}
-params5 = {'E': 2.05, 'b': 3, 'n0': 8000000, 'Sdd': 1.1*10 ** 19}
-sim_curve = adaGlow1.make_fit(params1, exp_data)
-adaGlow1.data = sim_curve
-
-print('1:')
-print(adaGlow1.fitness(params1))
-print('2:')
-print(adaGlow1.fitness(params2))
-print('3:')
-print(adaGlow1.fitness(params3))
-print('4:')
-print(adaGlow1.fitness(params4))
-print('5:')
-print(adaGlow1.fitness(params5))
+plt.title('CaSO4 RMSE')
+sns.heatmap(heatmap_CaSO4, cmap="crest", vmin=0, annot=True)
 
 
+plt.show()
 
